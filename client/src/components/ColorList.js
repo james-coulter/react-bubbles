@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import axiosWithAuth from "../axiosWithAuth";
 
 const initialColor = {
   color: "",
@@ -11,6 +12,14 @@ const ColorList = ({ colors, updateColors }) => {
   const [editing, setEditing] = useState(false);
   const [colorToEdit, setColorToEdit] = useState(initialColor);
 
+  //State for Stretch Goal
+  const [newColor, setNewColor] = useState({
+    color: '',
+    code: {
+      hex: ''
+    }
+  })
+
   const editColor = color => {
     setEditing(true);
     setColorToEdit(color);
@@ -21,11 +30,55 @@ const ColorList = ({ colors, updateColors }) => {
     // Make a put request to save your updated color
     // think about where will you get the id from...
     // where is is saved right now?
+
+    let activeColor = colors.filter(color => color.id === colorToEdit.id);
+
+    axiosWithAuth().put(`/api/colors/${activeColor[0].id}`, colorToEdit)
+                   .then( res => {
+                     console.log('Successful PUT request', res)
+                    updateColors([...colors, res.data])
+                    setEditing(false)
+                   })
+                   .catch(err => {
+                     console.log('Error with PUT request', err)
+                   })
   };
 
   const deleteColor = color => {
     // make a delete request to delete this color
+
+    axiosWithAuth().delete(`/api/colors/${color.id}`)
+                   .then( res => {
+                     updateColors(colors.filter( e => e.id !== color.id))
+                   })
+                   .catch(err => {
+                     console.log('Error with DELET Request', err)
+                   })
   };
+
+  const addColor = e => {
+    e.preventDefault();
+
+    axiosWithAuth().post('/api/colors', newColor)
+                   .then( res => {
+                     axiosWithAuth().get('/api/colors')
+                                    .then( res => {
+                                      updateColors(res.data)
+                                      setNewColor('')
+                                    })
+                                    .catch( err => {
+                                      console.log('Error with Get Request NESTED IN POST addColor', err)
+                                    })
+                   })
+  }
+
+  const handleChange = e => {
+    setNewColor({...newColor, [e.target.name]: e.target.value})
+  }
+
+  const handleHexChange = e => {
+    setNewColor({...newColor, code: {hex: e.target.value}})
+  }
 
   return (
     <div className="colors-wrap">
@@ -80,8 +133,16 @@ const ColorList = ({ colors, updateColors }) => {
           </div>
         </form>
       )}
-      <div className="spacer" />
+      {/* <div className="spacer" /> */}
       {/* stretch - build another form here to add a color */}
+      <form className='addForm' onSubmit={addColor}>
+          <h3>Add New Color</h3>
+          <h5>Color:</h5>
+          <input type='text' name='color' onChange={handleChange} />
+          <h5>Hex:</h5>
+          <input type='text' name='hex' onChange={handleHexChange} />
+          <button>Add Color</button>
+      </form>
     </div>
   );
 };
